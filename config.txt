@@ -1,0 +1,13 @@
+[Intervals]
+# 20 minutes
+WORK_INTERVAL = 1200
+# 20 seconds
+BREAK_INTERVAL = 20
+# 5 minutes
+REMIND_EARLY_INTERVAL = 300
+
+[Sound]
+# from 37-32767
+PITCH = 1000
+# in milliseconds
+LENGTH = 1000
