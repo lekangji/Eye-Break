@@ -1,5 +1,5 @@
 # Eye-Break
-A Python script to remind you to take eye breaks using the 20-20-20 rule.
+A app to help you stay productive while taking care of your eyes. Reminds you to take eye breaks using the 20-20-20 rule.
 
 ![Eye Break Thumbnail](https://raw.githubusercontent.com/22yeets22/Eye-Break/refs/heads/main/thumbnail.png)
 
@@ -16,7 +16,7 @@ This app will remind you to follow this rule while working on your computer.
 
 ## Usage
 Run the script:
-`python eye_break.py`
-Customize the settings by modifying the config file if needed.
+`python main.py`
+Customize the settings by modifying the config file (`config.txt`) if needed.
 <br /><br />
 Stay productive while taking care of your eyes! 👀✨
