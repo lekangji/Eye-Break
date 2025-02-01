@@ -7,7 +7,4 @@ BREAK_INTERVAL = 20
 REMIND_EARLY_INTERVAL = 300
 
 [Sound]
-# from 37-32767
-PITCH = 1000
-# in milliseconds
-LENGTH = 1000
+SOUND_FILE_PATH = sounds\default_notification.mp3
