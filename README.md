@@ -13,6 +13,8 @@ This app will remind you to follow this rule while working on your computer.
 - Customizable reminder intervals.  
 - Visual and/or audio alerts.  
 - Lightweight and easy to use.
+- Custom sound effects
+- Nice UI with PyQt
 
 ## Usage
 Run the script:
