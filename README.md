@@ -1,6 +1,5 @@
 # Eye-Break
-A app to help you stay productive while taking care of your eyes. Reminds you to take eye breaks using the 20-20-20 rule.
-
+An app to help you stay productive while taking care of your eyes using the 20-20-20 rule.
 ![Eye Break Thumbnail](https://raw.githubusercontent.com/22yeets22/Eye-Break/refs/heads/main/thumbnail.png)
 
 ## What is the 20-20-20 Rule?
