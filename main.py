@@ -27,10 +27,11 @@ from PyQt6.QtCore import (
     QUrl,
     QVariantAnimation,
 )
-from PyQt6.QtGui import QAction, QColor, QIcon
+from PyQt6.QtGui import QAction, QColor, QIcon, QPainter, QPen
 from PyQt6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from PyQt6.QtWidgets import (
+    QAbstractSpinBox,
     QApplication,
     QCheckBox,
     QDialog,
@@ -48,7 +49,9 @@ from PyQt6.QtWidgets import (
     QSlider,
     QSpinBox,
     QStyle,
+    QStyleOptionButton,
     QSystemTrayIcon,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -62,6 +65,7 @@ PROGRESS_MAX = 10000
 UI_REFRESH_MS = 100
 WATCHDOG_INTERVAL_MS = 5000
 TRAY_MESSAGE_DURATION_MS = 10000
+REMIND_LATER_RESULT = 2
 
 WM_WTSSESSION_CHANGE = 0x02B1
 WTS_SESSION_LOCK = 0x7
@@ -86,7 +90,18 @@ QProgressBar::chunk { border-radius: 4px;
 QLineEdit, QSpinBox { background: #ffffff; border: 1px solid #cbd5e1;
     border-radius: 6px; padding: 5px; min-height: 23px; }
 QLineEdit:focus, QSpinBox:focus { border-color: #2563eb; }
-QCheckBox { spacing: 8px; }
+QCheckBox { spacing: 8px; color: #26354d; }
+QCheckBox::indicator { width: 16px; height: 16px; background: #ffffff;
+    border: 1px solid #64748b; border-radius: 4px; }
+QCheckBox::indicator:hover { border-color: #1d4ed8; }
+QCheckBox::indicator:checked { background: #1d4ed8; border-color: #1e40af; }
+QCheckBox::indicator:disabled { background: #f1f5f9; border-color: #94a3b8; }
+QToolButton#spinStep { color: #25436f; background: #eef3fb;
+    border: 1px solid #cbd5e1; border-radius: 4px; }
+QToolButton#spinStep:hover { background: #dce9fb; border-color: #8aa7d4; }
+QToolButton#spinStep:pressed { background: #cbdcf5; }
+QToolButton#spinStep:focus { border-color: #2563eb; }
+QToolButton#spinStep:disabled { color: #94a3b8; background: #f1f5f9; }
 QSlider::groove:horizontal { background: #dbe5f5; height: 5px; border-radius: 2px; }
 QSlider::handle:horizontal { background: #2563eb; width: 15px; margin: -5px 0; border-radius: 7px; }
 """
@@ -222,6 +237,23 @@ class AnimatedButton(QPushButton):
             self.transition_to(self.base)
 
 
+class ContrastCheckBox(QCheckBox):
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if not self.isChecked():
+            return
+        option = QStyleOptionButton()
+        self.initStyleOption(option)
+        indicator = self.style().subElementRect(QStyle.SubElement.SE_CheckBoxIndicator, option, self)
+        painter = QPainter(self)
+        pen = QPen(QColor("#ffffff" if self.isEnabled() else "#64748b"), 2)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        painter.drawLine(indicator.left() + 4, indicator.top() + 9, indicator.left() + 7, indicator.top() + 12)
+        painter.drawLine(indicator.left() + 7, indicator.top() + 12, indicator.left() + 13, indicator.top() + 5)
+
+
 class TitleBar(QWidget):
     def __init__(self, owner, close_action, minimize_action=None, close_tooltip="Close"):
         super().__init__(owner)
@@ -293,7 +325,12 @@ class ReminderDialog(QDialog):
         self.progress = progress_bar("Break progress")
         layout.addWidget(self.progress)
 
-        layout.addWidget(button("Skip this break", self.reject))
+        actions = QHBoxLayout()
+        actions.addWidget(button("Skip this break", self.reject))
+        delay = parent.remind_early_interval
+        delay_text = f"{delay // 60} min" if delay % 60 == 0 else f"{delay} sec"
+        actions.addWidget(button(f"Remind me in {delay_text}", lambda: self.done(REMIND_LATER_RESULT), "primary"))
+        layout.addLayout(actions)
 
         self.ui_timer = make_timer(self, self.on_ui_tick)
         self.expiry_timer = make_timer(self, self.on_expired, math.ceil(seconds * MILLISECONDS_PER_SECOND), True)
@@ -374,14 +411,51 @@ class SettingsDialog(QDialog):
     @staticmethod
     def interval_control(minimum, maximum, value, suffix):
         control = QSpinBox()
+        control.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         control.setRange(minimum, maximum)
         control.setValue(value)
         control.setSuffix(suffix)
         return control
 
     @staticmethod
+    def interval_field(control, name):
+        field = QWidget()
+        control.setAccessibleName(name)
+        row = QHBoxLayout(field)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(5)
+        row.addWidget(control)
+        steps = QVBoxLayout()
+        steps.setContentsMargins(0, 0, 0, 0)
+        steps.setSpacing(2)
+        buttons = []
+        for direction, callback, label in (
+            (Qt.ArrowType.UpArrow, control.stepUp, "Increase"),
+            (Qt.ArrowType.DownArrow, control.stepDown, "Decrease"),
+        ):
+            step = QToolButton()
+            step.setObjectName("spinStep")
+            step.setArrowType(direction)
+            step.setAutoRepeat(True)
+            step.setFixedSize(24, 17)
+            step.setToolTip(f"{label} {name}")
+            step.setAccessibleName(f"{label} {name}")
+            step.clicked.connect(callback)
+            steps.addWidget(step)
+            buttons.append(step)
+
+        def update_steps(value):
+            buttons[0].setEnabled(value < control.maximum())
+            buttons[1].setEnabled(value > control.minimum())
+
+        control.valueChanged.connect(update_steps)
+        update_steps(control.value())
+        row.addLayout(steps)
+        return field
+
+    @staticmethod
     def checkbox(label, checked, available=True, tooltip=None):
-        control = QCheckBox(label)
+        control = ContrastCheckBox(label)
         control.setChecked(checked)
         control.setEnabled(available)
         if tooltip:
@@ -392,7 +466,7 @@ class SettingsDialog(QDialog):
         super().__init__(owner, Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint)
         self.owner = owner
         self.setWindowTitle("EyeBreak Settings")
-        self.resize(440, 405)
+        self.resize(440, 440)
         layout = surface_layout(self, (20, 12, 20, 18), 10)
         layout.addWidget(TitleBar(self, self.reject, close_tooltip="Close settings"))
 
@@ -431,9 +505,11 @@ class SettingsDialog(QDialog):
 
         form = QFormLayout()
         self.work_minutes = self.interval_control(20, 180, math.ceil(owner.work_interval / 60), " min")
-        form.addRow("Work interval", self.work_minutes)
+        form.addRow("Work interval", self.interval_field(self.work_minutes, "work interval"))
         self.break_seconds = self.interval_control(20, 120, owner.break_interval, " sec")
-        form.addRow("Break length", self.break_seconds)
+        form.addRow("Break length", self.interval_field(self.break_seconds, "break length"))
+        self.remind_minutes = self.interval_control(1, 180, math.ceil(owner.remind_early_interval / 60), " min")
+        form.addRow("Remind me later", self.interval_field(self.remind_minutes, "remind me later"))
         layout.addLayout(form)
 
         self.start_hidden = self.checkbox("Start hidden in the tray", owner.start_hidden, owner.tray is not None)
@@ -550,6 +626,7 @@ class EyeBreakReminder(QWidget):
 
         self.work_interval = integer("Intervals", "WORK_INTERVAL", MIN_WORK_INTERVAL, MIN_WORK_INTERVAL, 180 * 60)
         self.break_interval = integer("Intervals", "BREAK_INTERVAL", 20, 20, 120)
+        self.remind_early_interval = integer("Intervals", "REMIND_EARLY_INTERVAL", 300, 1, 180 * 60)
         self.volume = integer("Sound", "VOLUME", 70, 0, 100)
         sound = Path(string("Sound", "SOUND_FILE_PATH", "sounds/default_notification.mp3")).expanduser()
         self.sound_path = sound if sound.is_absolute() else APP_DIR / sound
@@ -583,9 +660,6 @@ class EyeBreakReminder(QWidget):
         for section in ("Intervals", "Sound", "Notifications", "Window"):
             if not config.has_section(section):
                 config.add_section(section)
-        if not config.has_option("Intervals", "REMIND_EARLY_INTERVAL"):
-            config.set("Intervals", "REMIND_EARLY_INTERVAL", "300")
-
         sound_path = dialog.selected_sound_path()
         try:
             sound_in_config = str(sound_path.relative_to(APP_DIR))
@@ -593,6 +667,7 @@ class EyeBreakReminder(QWidget):
             sound_in_config = str(sound_path)
         config.set("Intervals", "WORK_INTERVAL", str(dialog.work_minutes.value() * 60))
         config.set("Intervals", "BREAK_INTERVAL", str(dialog.break_seconds.value()))
+        config.set("Intervals", "REMIND_EARLY_INTERVAL", str(dialog.remind_minutes.value() * 60))
         config.set("Sound", "SOUND_FILE_PATH", sound_in_config)
         config.set("Sound", "ENABLED", str(dialog.sound_enabled.isChecked()).lower())
         config.set("Sound", "VOLUME", str(dialog.volume.value()))
@@ -777,6 +852,7 @@ class EyeBreakReminder(QWidget):
         self.tray_notifications = dialog.tray_notifications.isChecked() and self.tray is not None
         self.work_interval = dialog.work_minutes.value() * 60
         self.break_interval = dialog.break_seconds.value()
+        self.remind_early_interval = dialog.remind_minutes.value() * 60
         self.start_hidden = dialog.start_hidden.isChecked() and self.tray is not None
         self.reduce_motion = dialog.reduce_motion.isChecked()
         AnimatedButton.reduce_motion = self.reduce_motion
@@ -968,10 +1044,10 @@ class EyeBreakReminder(QWidget):
                 TRAY_MESSAGE_DURATION_MS,
             )
 
-    def reminder_finished(self):
+    def reminder_finished(self, result):
         self.dialog.deleteLater()
         self.dialog = None
-        self.schedule(self.work_interval)
+        self.schedule(self.remind_early_interval if result == REMIND_LATER_RESULT else self.work_interval)
 
 
 def instance_name():
