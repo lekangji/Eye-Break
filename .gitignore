@@ -1,8 +1,6 @@
 # Local settings and personal files
 /config.txt
 /.backups/
-/sounds/*
-!/sounds/default_notification.wav
 
 # Python and build output
 __pycache__/
