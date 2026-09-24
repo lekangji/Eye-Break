@@ -62,6 +62,7 @@ PROGRESS_MAX = 10000
 UI_REFRESH_MS = 100
 WATCHDOG_INTERVAL_MS = 5000
 TRAY_MESSAGE_DURATION_MS = 10000
+
 WM_WTSSESSION_CHANGE = 0x02B1
 WTS_SESSION_LOCK = 0x7
 WTS_SESSION_UNLOCK = 0x8
@@ -421,7 +422,9 @@ class SettingsDialog(QDialog):
         layout.addLayout(volume_row)
 
         self.tray_notifications = self.checkbox(
-            "Tray notification", owner.tray_notifications, owner.tray is not None,
+            "Tray notification",
+            owner.tray_notifications,
+            owner.tray is not None,
             "Also show a Windows notification when a break starts",
         )
         layout.addWidget(self.tray_notifications)
@@ -548,7 +551,7 @@ class EyeBreakReminder(QWidget):
         self.work_interval = integer("Intervals", "WORK_INTERVAL", MIN_WORK_INTERVAL, MIN_WORK_INTERVAL, 180 * 60)
         self.break_interval = integer("Intervals", "BREAK_INTERVAL", 20, 20, 120)
         self.volume = integer("Sound", "VOLUME", 70, 0, 100)
-        sound = Path(string("Sound", "SOUND_FILE_PATH", "sounds/default_notification.wav")).expanduser()
+        sound = Path(string("Sound", "SOUND_FILE_PATH", "sounds/default_notification.mp3")).expanduser()
         self.sound_path = sound if sound.is_absolute() else APP_DIR / sound
         self.sound_enabled = boolean("Sound", "ENABLED", True)
         self.tray_notifications = boolean("Notifications", "TRAY", False)
@@ -695,9 +698,7 @@ class EyeBreakReminder(QWidget):
         self.setWindowIcon(icon)
 
         layout = surface_layout(self, (18, 10, 18, 14), 5)
-        layout.addWidget(
-            TitleBar(self, QApplication.instance().quit, self.hide_to_tray, close_tooltip="Quit EyeBreak")
-        )
+        layout.addWidget(TitleBar(self, QApplication.instance().quit, self.hide_to_tray, close_tooltip="Quit EyeBreak"))
 
         self.status_label = QLabel()
         self.status_label.setObjectName("status")
@@ -961,7 +962,10 @@ class EyeBreakReminder(QWidget):
             self.play_sound()
         if self.tray_notifications and self.tray is not None and QSystemTrayIcon.supportsMessages():
             self.tray.showMessage(
-                "EyeBreak", "Look at something 20 feet away.", QSystemTrayIcon.MessageIcon.Information, TRAY_MESSAGE_DURATION_MS
+                "EyeBreak",
+                "Look at something 20 feet away.",
+                QSystemTrayIcon.MessageIcon.Information,
+                TRAY_MESSAGE_DURATION_MS,
             )
 
     def reminder_finished(self):
