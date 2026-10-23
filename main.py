@@ -56,8 +56,9 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-APP_DIR = Path(__file__).resolve().parent
-DEFAULTS_FILE = APP_DIR / "defaults.ini"
+RESOURCE_DIR = Path(__file__).resolve().parent
+APP_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else RESOURCE_DIR
+DEFAULTS_FILE = RESOURCE_DIR / "defaults.ini"
 CONFIG_FILE = APP_DIR / "config.txt"
 MIN_WORK_INTERVAL = 20 * 60
 MILLISECONDS_PER_SECOND = 1000
@@ -66,6 +67,14 @@ UI_REFRESH_MS = 100
 WATCHDOG_INTERVAL_MS = 5000
 TRAY_MESSAGE_DURATION_MS = 10000
 REMIND_LATER_RESULT = 2
+
+
+def sound_file_path(value):
+    path = Path(value).expanduser()
+    if path.is_absolute():
+        return path
+    local_path = APP_DIR / path
+    return local_path if local_path.is_file() else RESOURCE_DIR / path
 
 WM_WTSSESSION_CHANGE = 0x02B1
 WTS_SESSION_LOCK = 0x7
@@ -539,8 +548,7 @@ class SettingsDialog(QDialog):
         self.owner.play_sound(path, self.volume.value(), preview=True)
 
     def selected_sound_path(self):
-        path = Path(self.sound_file.text().strip()).expanduser()
-        return (path if path.is_absolute() else APP_DIR / path).resolve()
+        return sound_file_path(self.sound_file.text().strip()).resolve()
 
     def save(self):
         path = self.selected_sound_path()
@@ -628,8 +636,7 @@ class EyeBreakReminder(QWidget):
         self.break_interval = integer("Intervals", "BREAK_INTERVAL", 20, 20, 120)
         self.remind_early_interval = integer("Intervals", "REMIND_EARLY_INTERVAL", 300, 1, 180 * 60)
         self.volume = integer("Sound", "VOLUME", 70, 0, 100)
-        sound = Path(string("Sound", "SOUND_FILE_PATH", "sounds/default_notification.mp3")).expanduser()
-        self.sound_path = sound if sound.is_absolute() else APP_DIR / sound
+        self.sound_path = sound_file_path(string("Sound", "SOUND_FILE_PATH", "sounds/default_notification.mp3"))
         self.sound_enabled = boolean("Sound", "ENABLED", True)
         self.tray_notifications = boolean("Notifications", "TRAY", False)
         self.start_hidden = boolean("Window", "START_HIDDEN", False)
@@ -661,8 +668,9 @@ class EyeBreakReminder(QWidget):
             if not config.has_section(section):
                 config.add_section(section)
         sound_path = dialog.selected_sound_path()
+        sound_base = RESOURCE_DIR if sound_path.is_relative_to(RESOURCE_DIR) else APP_DIR
         try:
-            sound_in_config = str(sound_path.relative_to(APP_DIR))
+            sound_in_config = str(sound_path.relative_to(sound_base))
         except ValueError:
             sound_in_config = str(sound_path)
         config.set("Intervals", "WORK_INTERVAL", str(dialog.work_minutes.value() * 60))
@@ -764,7 +772,7 @@ class EyeBreakReminder(QWidget):
         self.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint)
         self.resize(330, 180)
 
-        icon_path = APP_DIR / "icon.ico"
+        icon_path = RESOURCE_DIR / "icon.ico"
         icon = (
             QIcon(str(icon_path))
             if icon_path.exists()

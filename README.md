@@ -1,40 +1,71 @@
+<div align="center">
+
+<img src="icon.ico" alt="EyeBreak icon" width="64" height="64">
+
 # EyeBreak
 
-EyeBreak v3 is an app to help you stay productive while taking care of your eyes using the 20-20-20 rule.
-![Eye Break Thumbnail](https://raw.githubusercontent.com/lekangji/Eye-Break/refs/heads/main/thumbnail.png)
+### A little reminder to look away from your screen.
 
-## Run
+**EyeBreak v3 is an app to help you stay productive while taking care of your eyes using the 20-20-20 rule.**
 
-Install Python 3.11 or newer. From this folder, run:
+![Windows](https://img.shields.io/badge/platform-Windows-0078D4)
+![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
+[![MIT License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+<img src="thumbnail.png" alt="EyeBreak screenshot" width="400">
+
+</div>
+
+EyeBreak keeps track of your next eye break while you work. When it's time, a reminder and an optional sound help you follow the 20-20-20 rule.
+
+## Small app, useful touches
+
+- **Your own rhythm.** Adjust the work interval, break length, and remind-me-later delay.
+- **Your choice of alerts.** Pick a custom sound, set the volume, or enable a tray notification.
+- **Ready when you return.** The countdown pauses while Windows is locked or asleep.
+- **Out of the way.** Hide the controls in the tray, start hidden, or reduce animations.
+
+## Get started
+
+### Windows executable
+
+Open `dist\EyeBreak.exe` if you've already built the app. It includes everything needed to run without Python installed. Move the single executable to a writable folder; EyeBreak saves your settings beside it when you click **Save**.
+
+To build it yourself, install Python 3.11 or newer and run these commands from the project folder:
+
+```powershell
+python -m pip install -r requirements.txt pyinstaller
+python -m PyInstaller --noconfirm EyeBreak.spec
+```
+
+Your app will be in `dist\EyeBreak.exe`.
+
+<details>
+<summary>Run directly with Python</summary>
 
 ```powershell
 python -m pip install -r requirements.txt
 python main.py
 ```
 
-Use `python main.py --test` to show a break reminder immediately and play the configured sound.
+Keep `defaults.ini` and the `sounds` folder beside `main.py`. To try a reminder immediately, run `python main.py --test`.
 
-## What is the 20-20-20 Rule?
+</details>
 
-The 20-20-20 rule helps reduce digital eye strain. It suggests:
+## Make it yours
 
-- Every **20 minutes**, look at something **20 feet away** for **20 seconds**.
+Open **Settings** to adjust the timing, sound, volume, tray notifications, startup visibility, and animations. Your choices are stored in `config.txt` beside the script or executable.
 
-This app will remind you to follow this rule while working on your computer.
+Use the tray menu to show the controls, pause reminders, open Settings, or quit. To try the packaged reminder and sound immediately, run `EyeBreak.exe --test` from the folder containing it.
 
-## Settings
+### Start with Windows
 
-Open **Settings** in the app to change the work interval, break length, sound, volume, tray notification, startup visibility, or animations. EyeBreak writes personal settings to `config.txt` beside the script. The repository includes `defaults.ini` and the default notification sound. Keep both files beside `main.py` when running from a downloaded copy.
+1. Keep `EyeBreak.exe` in the folder you want to run it from.
+2. Press **Win+R**, enter `shell:startup`, and press **Enter**.
+3. Place a **shortcut** to `EyeBreak.exe` in that folder.
 
-The app pauses its countdown while Windows is locked or asleep. Closing the control window hides it in the tray when a system tray is available. Use the tray menu to quit.
+Enable **Start hidden in the tray** in Settings if you'd like EyeBreak to stay out of the way when you sign in.
 
-## Features
+## License
 
-- Customizable reminder intervals.
-- Visual and/or audio alerts.
-- Lightweight and easy to use.
-- Custom sound effects
-- Nice UI with PyQt
-
-<br/>
-Stay productive while taking care of your eyes! 👀✨
+[MIT](LICENSE)
